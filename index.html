@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ひらがな ひつじゅん 学習プリント</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 30px;
+  }
+  h1 { margin: 18px 0 8px; font-size: 1.9rem; color: #e74c3c; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+
+  /* 五十音表 */
+  .gojuon-table { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-width: 480px; width: 95%; margin: 8px auto; }
+  .gojuon-table .cell {
+    background: #fff; border: 2px solid #ddd; border-radius: 10px;
+    text-align: center; font-size: 1.3rem; padding: 7px 0;
+    cursor: pointer; transition: all .2s; user-select: none;
+  }
+  .gojuon-table .cell:hover { background: #fff3e0; transform: scale(1.08); }
+  .gojuon-table .cell.active { background: #ffe0b2; border-color: #ff9800; font-weight: bold; }
+  .gojuon-table .cell.empty { visibility: hidden; }
+
+  /* モード切り替え */
+  .mode-tabs { display: flex; gap: 4px; margin: 10px 0 6px; }
+  .mode-tab {
+    padding: 6px 16px; border: 2px solid #ff9800; border-radius: 20px;
+    background: #fff; color: #ff9800; cursor: pointer;
+    font-size: .9rem; font-family: inherit; transition: all .2s;
+  }
+  .mode-tab.active { background: #ff9800; color: #fff; }
+
+  /* 学習エリア */
+  #learnArea { width: 95%; max-width: 900px; margin: 0 auto; }
+
+  .stroke-section {
+    display: flex; flex-wrap: wrap; gap: 16px;
+    justify-content: center; align-items: stretch; margin-bottom: 16px;
+  }
+
+  /* 大きな文字パネル */
+  .big-char-panel {
+    background: #fff; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 16px; text-align: center; width: 280px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .big-char-panel .romaji { font-size: 1.4rem; color: #888; margin-bottom: 0; }
+  .big-char-panel .big-char { font-size: 10rem; line-height: 1; color: #333; }
+  .big-char-panel .stroke-count { font-size: 1rem; color: #e74c3c; margin-top: 4px; font-weight: bold; }
+
+  /* ひつじゅん・アニメーション・れんしゅう（PNG + 描画オーバーレイ） */
+  .stroke-order-panel {
+    background: #fff; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 16px; text-align: center; flex: 1; min-width: 300px; max-width: 580px;
+  }
+  .stroke-order-panel h2 { font-size: 1.05rem; color: #555; margin-bottom: 8px; }
+
+  .nazorigaki-img-wrap {
+    margin: 8px auto; border: 2px solid #ccc; border-radius: 10px; overflow: hidden; background: #fafafa;
+    position: relative; cursor: crosshair;
+  }
+  .nazorigaki-img-wrap img { display: block; width: 100%; height: auto; max-width: 100%; }
+  .nazorigaki-img-wrap canvas {
+    position: absolute; top: 0; left: 0;
+    pointer-events: auto; touch-action: none;
+  }
+  .btn-clear { background: #f44336; color: #fff; margin-top: 8px; }
+  .btn-clear:hover { background: #c62828; }
+
+  .btn-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+  .btn {
+    padding: 7px 16px; border: none; border-radius: 8px;
+    font-size: .95rem; cursor: pointer; transition: all .2s; font-family: inherit;
+  }
+  .btn-play { background: #4caf50; color: #fff; }
+  .btn-play:hover { background: #388e3c; }
+  .btn-prev { background: #2196f3; color: #fff; }
+  .btn-prev:hover { background: #1565c0; }
+  .btn-next { background: #ff9800; color: #fff; }
+  .btn-next:hover { background: #e65100; }
+
+  /* クイズ */
+  .quiz-panel {
+    background: #fff; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 20px; text-align: center; width: 95%; max-width: 500px; display: none;
+  }
+  .quiz-panel h2 { font-size: 1.3rem; color: #555; margin-bottom: 12px; }
+  .quiz-question { font-size: 6rem; color: #333; margin: 10px 0; }
+  .quiz-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px auto; max-width: 360px; }
+  .quiz-choice {
+    padding: 14px; border: 2px solid #ddd; border-radius: 12px;
+    font-size: 1.3rem; cursor: pointer; transition: all .2s; background: #fafafa; font-family: inherit;
+  }
+  .quiz-choice:hover { border-color: #ff9800; background: #fff3e0; }
+  .quiz-choice.correct { background: #c8e6c9; border-color: #4caf50; }
+  .quiz-choice.wrong { background: #ffcdd2; border-color: #f44336; }
+  .quiz-score { font-size: 1.1rem; color: #666; margin: 10px 0; }
+  .quiz-feedback { font-size: 1.2rem; min-height: 1.5em; margin: 8px 0; }
+
+  footer { margin: 20px 0; color: #999; font-size: .8rem; }
+
+  @media (max-width: 640px) {
+    .stroke-section { flex-direction: column; align-items: center; }
+    .big-char-panel { width: 95%; }
+    .stroke-order-panel { min-width: auto; width: 95%; }
+  }
+</style>
+</head>
+<body>
+
+<h1>ひらがな ひつじゅん</h1>
+<p style="font-size:.9rem;color:#666;margin:-4px 0 8px;">学習プリント無料ダウンロード</p>
+
+<div class="mode-tabs">
+  <button class="mode-tab active" onclick="setMode('learn')">学習モード</button>
+  <button class="mode-tab" onclick="setMode('quiz')">クイズモード</button>
+</div>
+
+<div class="gojuon-table" id="gojuonTable"></div>
+
+<div id="learnArea">
+  <div class="stroke-section">
+    <div class="big-char-panel">
+      <p class="romaji" id="romajiDisplay">a</p>
+      <p class="big-char" id="charDisplay">あ</p>
+      <p class="stroke-count" id="strokeCount">-</p>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-prev" onclick="prevChar()">◀ 前</button>
+        <button class="btn btn-next" onclick="nextChar()">次 ▶</button>
+      </div>
+    </div>
+    <div class="stroke-order-panel">
+      <h2>ひつじゅん・アニメーション・れんしゅう（なぞりがきプリント）</h2>
+      <p style="font-size:.85rem;color:#777;margin-bottom:8px;">hiragana_nazorigaki2015.pdf より</p>
+      <div class="nazorigaki-img-wrap" id="nazorigakiWrap">
+        <img id="nazorigakiImg" src="nazorigaki_images/page-01.png" alt="ひつじゅん・れんしゅう なぞりがき" />
+        <canvas id="nazorigakiCanvas"></canvas>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-clear" onclick="clearNazorigakiCanvas()">書いた線を消す</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="quiz-panel" id="quizArea">
+  <h2>ひらがなクイズ</h2>
+  <p class="quiz-score" id="quizScore">正解: 0 / 0</p>
+  <p class="quiz-question" id="quizQuestion">あ</p>
+  <p class="quiz-feedback" id="quizFeedback">&nbsp;</p>
+  <div class="quiz-choices" id="quizChoices"></div>
+  <div class="btn-row" style="margin-top:14px;">
+    <button class="btn btn-next" id="btnNextQuiz" onclick="nextQuiz()" style="display:none;">次の問題 ▶</button>
+  </div>
+</div>
+
+<footer>ひらがな ひつじゅん 学習プリント ― © <a href="https://happylilac.net/" target="_blank" rel="noopener" style="color:#999;">ちびむすドリル</a> ｜ <a href="hiragana_nazorigaki2015.pdf" target="_blank" style="color:#999;">PDF版（なぞりがき）</a></footer>
+<script>
+// ======================================================
+//  ひらがな ひつじゅん 学習プリント
+//  © ちびむすドリル
+// ======================================================
+
+// ----- ひらがなリスト -----
+const HIRAGANA = [
+  {ch:'あ',rom:'a'},{ch:'い',rom:'i'},{ch:'う',rom:'u'},{ch:'え',rom:'e'},{ch:'お',rom:'o'},
+  {ch:'か',rom:'ka'},{ch:'き',rom:'ki'},{ch:'く',rom:'ku'},{ch:'け',rom:'ke'},{ch:'こ',rom:'ko'},
+  {ch:'さ',rom:'sa'},{ch:'し',rom:'si'},{ch:'す',rom:'su'},{ch:'せ',rom:'se'},{ch:'そ',rom:'so'},
+  {ch:'た',rom:'ta'},{ch:'ち',rom:'ti'},{ch:'つ',rom:'tu'},{ch:'て',rom:'te'},{ch:'と',rom:'to'},
+  {ch:'な',rom:'na'},{ch:'に',rom:'ni'},{ch:'ぬ',rom:'nu'},{ch:'ね',rom:'ne'},{ch:'の',rom:'no'},
+  {ch:'は',rom:'ha'},{ch:'ひ',rom:'hi'},{ch:'ふ',rom:'hu'},{ch:'へ',rom:'he'},{ch:'ほ',rom:'ho'},
+  {ch:'ま',rom:'ma'},{ch:'み',rom:'mi'},{ch:'む',rom:'mu'},{ch:'め',rom:'me'},{ch:'も',rom:'mo'},
+  {ch:'や',rom:'ya'},{ch:'ゆ',rom:'yu'},{ch:'よ',rom:'yo'},
+  {ch:'ら',rom:'ra'},{ch:'り',rom:'ri'},{ch:'る',rom:'ru'},{ch:'れ',rom:'re'},{ch:'ろ',rom:'ro'},
+  {ch:'わ',rom:'wa'},{ch:'を',rom:'wo'},{ch:'ん',rom:'n'}
+];
+
+const ROWS = [
+  ['あ','い','う','え','お'],
+  ['か','き','く','け','こ'],
+  ['さ','し','す','せ','そ'],
+  ['た','ち','つ','て','と'],
+  ['な','に','ぬ','ね','の'],
+  ['は','ひ','ふ','へ','ほ'],
+  ['ま','み','む','め','も'],
+  ['や','','ゆ','','よ'],
+  ['ら','り','る','れ','ろ'],
+  ['わ','','を','','ん']
+];
+
+// ----- 状態 -----
+let currentIndex = 0;
+let mode = 'learn';
+let quizCorrect = 0, quizTotal = 0, quizAnswered = false;
+
+function getNazorigakiPageNumber() {
+  return String(currentIndex + 1).padStart(2, '0');
+}
+
+// ============================================================
+//  五十音表
+// ============================================================
+function buildTable() {
+  const table = document.getElementById('gojuonTable');
+  table.innerHTML = '';
+  ROWS.forEach(row => {
+    row.forEach(ch => {
+      const div = document.createElement('div');
+      if (!ch) { div.className = 'cell empty'; }
+      else {
+        div.className = 'cell';
+        div.textContent = ch;
+        div.onclick = () => { currentIndex = HIRAGANA.findIndex(h => h.ch === ch); updateDisplay(); };
+      }
+      table.appendChild(div);
+    });
+  });
+}
+
+function highlightTable() {
+  const ch = HIRAGANA[currentIndex].ch;
+  document.querySelectorAll('.gojuon-table .cell').forEach(c => {
+    c.classList.toggle('active', c.textContent === ch);
+  });
+}
+
+// ============================================================
+//  表示更新（PNG 画像 + 描画オーバーレイ）
+// ============================================================
+function updateDisplay() {
+  const h = HIRAGANA[currentIndex];
+  document.getElementById('charDisplay').textContent = h.ch;
+  document.getElementById('romajiDisplay').textContent = h.rom;
+  document.getElementById('strokeCount').textContent = '-';
+  highlightTable();
+
+  const pageNum = getNazorigakiPageNumber();
+  const imgPath = `nazorigaki_images/page-${pageNum}.png`;
+  const img = document.getElementById('nazorigakiImg');
+  img.src = imgPath;
+  clearNazorigakiCanvas();
+  if (img.complete) resizeNazorigakiCanvas();
+}
+
+// ============================================================
+//  PNG上からの書き込み（記憶した setupDrawing と同じ描画方式）
+// ============================================================
+function resizeNazorigakiCanvas() {
+  const canvas = document.getElementById('nazorigakiCanvas');
+  const wrap = document.getElementById('nazorigakiWrap');
+  const rect = wrap.getBoundingClientRect();
+  if (rect.width < 10 || rect.height < 10) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.round(rect.width * dpr);
+  const h = Math.round(rect.height * dpr);
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+  }
+}
+
+function clearNazorigakiCanvas() {
+  const canvas = document.getElementById('nazorigakiCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function setupNazorigakiDrawing() {
+  const canvas = document.getElementById('nazorigakiCanvas');
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+  canvas.addEventListener('pointerdown', e => {
+    drawing = true; ctx.beginPath();
+    const r = canvas.getBoundingClientRect();
+    ctx.moveTo((e.clientX-r.left)*canvas.width/r.width, (e.clientY-r.top)*canvas.height/r.height);
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!drawing) return;
+    const r = canvas.getBoundingClientRect();
+    ctx.lineWidth = 18; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#333';
+    ctx.lineTo((e.clientX-r.left)*canvas.width/r.width, (e.clientY-r.top)*canvas.height/r.height);
+    ctx.stroke();
+  });
+  canvas.addEventListener('pointerup', () => drawing = false);
+  canvas.addEventListener('pointerleave', () => drawing = false);
+}
+
+function initNazorigakiCanvas() {
+  const img = document.getElementById('nazorigakiImg');
+  function syncCanvas() { resizeNazorigakiCanvas(); }
+  img.addEventListener('load', syncCanvas);
+  window.addEventListener('resize', syncCanvas);
+  new ResizeObserver(syncCanvas).observe(document.getElementById('nazorigakiWrap'));
+  syncCanvas();
+  setupNazorigakiDrawing();
+}
+
+// ============================================================
+//  ナビゲーション
+// ============================================================
+function prevChar() { currentIndex = (currentIndex - 1 + HIRAGANA.length) % HIRAGANA.length; updateDisplay(); }
+function nextChar() { currentIndex = (currentIndex + 1) % HIRAGANA.length; updateDisplay(); }
+
+// ============================================================
+//  モード切り替え
+// ============================================================
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.textContent.includes(m==='learn'?'学習':'クイズ')));
+  document.getElementById('learnArea').style.display = m==='learn' ? 'block' : 'none';
+  document.getElementById('quizArea').style.display = m==='quiz' ? 'block' : 'none';
+  if (m==='quiz') { quizCorrect=0; quizTotal=0; nextQuiz(); }
+}
+
+// ============================================================
+//  クイズ
+// ============================================================
+function nextQuiz() {
+  quizAnswered = false;
+  document.getElementById('quizFeedback').innerHTML = '&nbsp;';
+  document.getElementById('btnNextQuiz').style.display = 'none';
+  const qi = Math.floor(Math.random()*HIRAGANA.length);
+  const {ch, rom} = HIRAGANA[qi];
+  const type = Math.random() < 0.5 ? 'h2r' : 'r2h';
+  let question, answer, pool;
+  if (type==='h2r') { question=ch; answer=rom; pool=HIRAGANA.map(h=>h.rom); }
+  else { question=rom; answer=ch; pool=HIRAGANA.map(h=>h.ch); }
+  const choices = genChoices(answer, pool);
+  document.getElementById('quizQuestion').textContent = question;
+  document.getElementById('quizScore').textContent = `正解: ${quizCorrect} / ${quizTotal}`;
+  const div = document.getElementById('quizChoices');
+  div.innerHTML = '';
+  choices.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-choice'; btn.textContent = c;
+    btn.onclick = () => checkAnswer(btn, c, answer);
+    div.appendChild(btn);
+  });
+}
+function genChoices(correct, pool) {
+  const s = new Set([correct]);
+  while (s.size < 4) s.add(pool[Math.floor(Math.random()*pool.length)]);
+  return shuffle([...s]);
+}
+function shuffle(a) { for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]; } return a; }
+function checkAnswer(btn, sel, cor) {
+  if (quizAnswered) return;
+  quizAnswered = true; quizTotal++;
+  if (sel===cor) { quizCorrect++; btn.classList.add('correct'); document.getElementById('quizFeedback').textContent='⭕ 正解！'; document.getElementById('quizFeedback').style.color='#4caf50'; }
+  else { btn.classList.add('wrong'); document.getElementById('quizFeedback').textContent=`❌ 不正解… 正解は「${cor}」`; document.getElementById('quizFeedback').style.color='#f44336';
+    document.querySelectorAll('.quiz-choice').forEach(b=>{ if(b.textContent===cor) b.classList.add('correct'); });
+  }
+  document.getElementById('quizScore').textContent=`正解: ${quizCorrect} / ${quizTotal}`;
+  document.getElementById('btnNextQuiz').style.display='inline-block';
+}
+
+// キーボードショートカット
+document.addEventListener('keydown', e => {
+  if (mode==='learn') {
+    if (e.key==='ArrowLeft') prevChar();
+    else if (e.key==='ArrowRight') nextChar();
+  }
+});
+
+// ============================================================
+//  初期化
+// ============================================================
+buildTable();
+updateDisplay();
+initNazorigakiCanvas();
+</script>
+</body>
+</html>
