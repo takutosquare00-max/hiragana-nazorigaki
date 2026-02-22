@@ -17,8 +17,18 @@
   }
   h1 { margin: 18px 0 8px; font-size: 1.9rem; color: #e74c3c; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
 
+  /* カテゴリタブ */
+  .category-tabs { display: flex; gap: 4px; margin: 10px 0 4px; flex-wrap: wrap; justify-content: center; }
+  .category-tab {
+    padding: 5px 12px; border: 2px solid #e74c3c; border-radius: 16px;
+    background: #fff; color: #e74c3c; cursor: pointer;
+    font-size: .85rem; font-family: inherit; transition: all .2s;
+  }
+  .category-tab.active { background: #e74c3c; color: #fff; }
+
   /* 五十音表 */
   .gojuon-table { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-width: 480px; width: 95%; margin: 8px auto; }
+  .gojuon-table.cols-6 { grid-template-columns: repeat(6, 1fr); max-width: 560px; }
   .gojuon-table .cell {
     background: #fff; border: 2px solid #ddd; border-radius: 10px;
     text-align: center; font-size: 1.3rem; padding: 7px 0;
@@ -36,6 +46,7 @@
     font-size: .9rem; font-family: inherit; transition: all .2s;
   }
   .mode-tab.active { background: #ff9800; color: #fff; }
+  .mode-tab:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* 学習エリア */
   #learnArea { width: 95%; max-width: 900px; margin: 0 auto; }
@@ -117,9 +128,16 @@
 
 <h1>ひらがな ひつじゅん</h1>
 
+<div class="category-tabs" id="categoryTabs">
+  <button class="category-tab active" onclick="setCategory('sei')">清音</button>
+  <button class="category-tab" onclick="setCategory('dakuten')">濁点・半濁点</button>
+  <button class="category-tab" onclick="setCategory('sokuon')">促音</button>
+  <button class="category-tab" onclick="setCategory('yoon')">拗音</button>
+</div>
+
 <div class="mode-tabs">
   <button class="mode-tab active" onclick="setMode('learn')">学習モード</button>
-  <button class="mode-tab" onclick="setMode('quiz')">クイズモード</button>
+  <button class="mode-tab" id="quizModeBtn" onclick="setMode('quiz')">クイズモード</button>
 </div>
 
 <div class="gojuon-table" id="gojuonTable"></div>
@@ -138,12 +156,15 @@
     <div class="stroke-order-panel">
       <h2>ひつじゅん・アニメーション・れんしゅう（なぞりがきプリント）</h2>
       <p style="font-size:.85rem;color:#777;margin-bottom:8px;">hiragana_nazorigaki2015.pdf より</p>
-      <div class="nazorigaki-img-wrap" id="nazorigakiWrap">
-        <img id="nazorigakiImg" src="nazorigaki_images/page-01.png" alt="ひつじゅん・れんしゅう なぞりがき" />
-        <canvas id="nazorigakiCanvas"></canvas>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-clear" onclick="clearNazorigakiCanvas()">けす</button>
+      <p id="nazorigakiNoImage" style="display:none;padding:40px;color:#999;font-size:1rem;">この文字のなぞりがきはありません</p>
+      <div id="nazorigakiSection">
+        <div class="nazorigaki-img-wrap" id="nazorigakiWrap">
+          <img id="nazorigakiImg" src="nazorigaki_images/page-01.png" alt="ひつじゅん・れんしゅう なぞりがき" />
+          <canvas id="nazorigakiCanvas"></canvas>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-clear" onclick="clearNazorigakiCanvas()">けす</button>
+        </div>
       </div>
     </div>
   </div>
@@ -194,10 +215,61 @@ const ROWS = [
   ['わ','','を','','ん']
 ];
 
+// 濁点・半濁点
+const DAKUTEN = [
+  {ch:'が',rom:'ga'},{ch:'ぎ',rom:'gi'},{ch:'ぐ',rom:'gu'},{ch:'げ',rom:'ge'},{ch:'ご',rom:'go'},
+  {ch:'ざ',rom:'za'},{ch:'じ',rom:'zi'},{ch:'ず',rom:'zu'},{ch:'ぜ',rom:'ze'},{ch:'ぞ',rom:'zo'},
+  {ch:'だ',rom:'da'},{ch:'ぢ',rom:'di'},{ch:'づ',rom:'du'},{ch:'で',rom:'de'},{ch:'ど',rom:'do'},
+  {ch:'ば',rom:'ba'},{ch:'び',rom:'bi'},{ch:'ぶ',rom:'bu'},{ch:'べ',rom:'be'},{ch:'ぼ',rom:'bo'},
+  {ch:'ぱ',rom:'pa'},{ch:'ぴ',rom:'pi'},{ch:'ぷ',rom:'pu'},{ch:'ぺ',rom:'pe'},{ch:'ぽ',rom:'po'}
+];
+const DAKUTEN_ROWS = [
+  ['が','ぎ','ぐ','げ','ご'],
+  ['ざ','じ','ず','ぜ','ぞ'],
+  ['だ','ぢ','づ','で','ど'],
+  ['ば','び','ぶ','べ','ぼ'],
+  ['ぱ','ぴ','ぷ','ぺ','ぽ']
+];
+
+// 促音
+const SOKUON = [{ch:'っ',rom:'(促音)'}];
+const SOKUON_ROWS = [['っ']];
+
+// 拗音
+const YOON = [
+  {ch:'きゃ',rom:'kya'},{ch:'きゅ',rom:'kyu'},{ch:'きょ',rom:'kyo'},
+  {ch:'しゃ',rom:'sya'},{ch:'しゅ',rom:'syu'},{ch:'しょ',rom:'syo'},
+  {ch:'ちゃ',rom:'tya'},{ch:'ちゅ',rom:'tyu'},{ch:'ちょ',rom:'tyo'},
+  {ch:'にゃ',rom:'nya'},{ch:'にゅ',rom:'nyu'},{ch:'にょ',rom:'nyo'},
+  {ch:'ひゃ',rom:'hya'},{ch:'ひゅ',rom:'hyu'},{ch:'ひょ',rom:'hyo'},
+  {ch:'みゃ',rom:'mya'},{ch:'みゅ',rom:'myu'},{ch:'みょ',rom:'myo'},
+  {ch:'りゃ',rom:'rya'},{ch:'りゅ',rom:'ryu'},{ch:'りょ',rom:'ryo'},
+  {ch:'ぎゃ',rom:'gya'},{ch:'ぎゅ',rom:'gyu'},{ch:'ぎょ',rom:'gyo'},
+  {ch:'じゃ',rom:'zya'},{ch:'じゅ',rom:'zyu'},{ch:'じょ',rom:'zyo'},
+  {ch:'びゃ',rom:'bya'},{ch:'びゅ',rom:'byu'},{ch:'びょ',rom:'byo'},
+  {ch:'ぴゃ',rom:'pya'},{ch:'ぴゅ',rom:'pyu'},{ch:'ぴょ',rom:'pyo'}
+];
+const YOON_ROWS = [
+  ['きゃ','きゅ','きょ','しゃ','しゅ','しょ'],
+  ['ちゃ','ちゅ','ちょ','にゃ','にゅ','にょ'],
+  ['ひゃ','ひゅ','ひょ','みゃ','みゅ','みょ'],
+  ['りゃ','りゅ','りょ','ぎゃ','ぎゅ','ぎょ'],
+  ['じゃ','じゅ','じょ','びゃ','びゅ','びょ'],
+  ['ぴゃ','ぴゅ','ぴょ','','','']
+];
+
 // ----- 状態 -----
 let currentIndex = 0;
+let currentCategory = 'sei'; // sei, dakuten, sokuon, yoon
 let mode = 'learn';
 let quizCorrect = 0, quizTotal = 0, quizAnswered = false;
+
+function getCharList() {
+  if (currentCategory === 'sei') return HIRAGANA;
+  if (currentCategory === 'dakuten') return DAKUTEN;
+  if (currentCategory === 'sokuon') return SOKUON;
+  return YOON;
+}
 
 function getNazorigakiPageNumber() {
   return String(currentIndex + 1).padStart(2, '0');
@@ -206,17 +278,47 @@ function getNazorigakiPageNumber() {
 // ============================================================
 //  五十音表
 // ============================================================
+function setCategory(cat) {
+  currentCategory = cat;
+  currentIndex = 0;
+  document.querySelectorAll('.category-tab').forEach(t => {
+    const isSei = t.textContent === '清音';
+    const isDakuten = t.textContent === '濁点・半濁点';
+    const isSokuon = t.textContent === '促音';
+    const isYoon = t.textContent === '拗音';
+    t.classList.toggle('active',
+      (cat === 'sei' && isSei) || (cat === 'dakuten' && isDakuten) ||
+      (cat === 'sokuon' && isSokuon) || (cat === 'yoon' && isYoon));
+  });
+  updateQuizButtonState();
+  if (cat === 'sokuon' && mode === 'quiz') { mode = 'learn'; setMode('learn'); }
+  buildTable();
+  updateDisplay();
+  if (mode === 'quiz') { quizCorrect = 0; quizTotal = 0; nextQuiz(); }
+}
+
+function updateQuizButtonState() {
+  const btn = document.getElementById('quizModeBtn');
+  if (btn) btn.disabled = currentCategory === 'sokuon';
+}
+
 function buildTable() {
   const table = document.getElementById('gojuonTable');
   table.innerHTML = '';
-  ROWS.forEach(row => {
+  let rows, list;
+  if (currentCategory === 'sei') { rows = ROWS; list = HIRAGANA; }
+  else if (currentCategory === 'dakuten') { rows = DAKUTEN_ROWS; list = DAKUTEN; }
+  else if (currentCategory === 'sokuon') { rows = SOKUON_ROWS; list = SOKUON; }
+  else { rows = YOON_ROWS; list = YOON; }
+  table.classList.toggle('cols-6', currentCategory === 'yoon');
+  rows.forEach(row => {
     row.forEach(ch => {
       const div = document.createElement('div');
       if (!ch) { div.className = 'cell empty'; }
       else {
         div.className = 'cell';
         div.textContent = ch;
-        div.onclick = () => { currentIndex = HIRAGANA.findIndex(h => h.ch === ch); updateDisplay(); };
+        div.onclick = () => { currentIndex = list.findIndex(h => h.ch === ch); updateDisplay(); };
       }
       table.appendChild(div);
     });
@@ -224,7 +326,8 @@ function buildTable() {
 }
 
 function highlightTable() {
-  const ch = HIRAGANA[currentIndex].ch;
+  const list = getCharList();
+  const ch = list[currentIndex].ch;
   document.querySelectorAll('.gojuon-table .cell').forEach(c => {
     c.classList.toggle('active', c.textContent === ch);
   });
@@ -234,18 +337,29 @@ function highlightTable() {
 //  表示更新（PNG 画像 + 描画オーバーレイ）
 // ============================================================
 function updateDisplay() {
-  const h = HIRAGANA[currentIndex];
-  document.getElementById('charDisplay').textContent = h.ch;
+  const list = getCharList();
+  const h = list[currentIndex];
+  const charEl = document.getElementById('charDisplay');
+  charEl.textContent = h.ch;
+  charEl.style.fontSize = h.ch.length > 1 ? '5.5rem' : '10rem';
   document.getElementById('romajiDisplay').textContent = h.rom;
   document.getElementById('strokeCount').textContent = '-';
   highlightTable();
 
-  const pageNum = getNazorigakiPageNumber();
-  const imgPath = `nazorigaki_images/page-${pageNum}.png`;
-  const img = document.getElementById('nazorigakiImg');
-  img.src = imgPath;
-  clearNazorigakiCanvas();
-  if (img.complete) resizeNazorigakiCanvas();
+  const hasNazorigaki = currentCategory === 'sei';
+  const section = document.getElementById('nazorigakiSection');
+  const msg = document.getElementById('nazorigakiNoImage');
+  if (section) section.style.display = hasNazorigaki ? 'block' : 'none';
+  if (msg) msg.style.display = hasNazorigaki ? 'none' : 'block';
+
+  if (hasNazorigaki) {
+    const pageNum = getNazorigakiPageNumber();
+    const imgPath = `nazorigaki_images/page-${pageNum}.png`;
+    const img = document.getElementById('nazorigakiImg');
+    img.src = imgPath;
+    clearNazorigakiCanvas();
+    if (img.complete) resizeNazorigakiCanvas();
+  }
 }
 
 // ============================================================
@@ -307,13 +421,14 @@ function initNazorigakiCanvas() {
 // ============================================================
 //  ナビゲーション
 // ============================================================
-function prevChar() { currentIndex = (currentIndex - 1 + HIRAGANA.length) % HIRAGANA.length; updateDisplay(); }
-function nextChar() { currentIndex = (currentIndex + 1) % HIRAGANA.length; updateDisplay(); }
+function prevChar() { const n = getCharList().length; currentIndex = (currentIndex - 1 + n) % n; updateDisplay(); }
+function nextChar() { const n = getCharList().length; currentIndex = (currentIndex + 1) % n; updateDisplay(); }
 
 // ============================================================
 //  モード切り替え
 // ============================================================
 function setMode(m) {
+  if (m === 'quiz' && currentCategory === 'sokuon') return;
   mode = m;
   document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.textContent.includes(m==='learn'?'学習':'クイズ')));
   document.getElementById('learnArea').style.display = m==='learn' ? 'block' : 'none';
@@ -328,12 +443,13 @@ function nextQuiz() {
   quizAnswered = false;
   document.getElementById('quizFeedback').innerHTML = '&nbsp;';
   document.getElementById('btnNextQuiz').style.display = 'none';
-  const qi = Math.floor(Math.random()*HIRAGANA.length);
-  const {ch, rom} = HIRAGANA[qi];
+  const list = getCharList();
+  const qi = Math.floor(Math.random()*list.length);
+  const {ch, rom} = list[qi];
   const type = Math.random() < 0.5 ? 'h2r' : 'r2h';
   let question, answer, pool;
-  if (type==='h2r') { question=ch; answer=rom; pool=HIRAGANA.map(h=>h.rom); }
-  else { question=rom; answer=ch; pool=HIRAGANA.map(h=>h.ch); }
+  if (type==='h2r') { question=ch; answer=rom; pool=list.map(h=>h.rom); }
+  else { question=rom; answer=ch; pool=list.map(h=>h.ch); }
   const choices = genChoices(answer, pool);
   document.getElementById('quizQuestion').textContent = question;
   document.getElementById('quizScore').textContent = `正解: ${quizCorrect} / ${quizTotal}`;
@@ -376,6 +492,7 @@ document.addEventListener('keydown', e => {
 // ============================================================
 buildTable();
 updateDisplay();
+updateQuizButtonState();
 initNazorigakiCanvas();
 </script>
 </body>
